@@ -6,11 +6,12 @@
 #Anyways, enjoy!
 #!/usr/bin/python
 
-import sys, os, random
+import sys, os, random, time
+
 
 #shuffles the deck
 def shuffle(cards):
-	random.seed(sys.argv[1])
+	random.seed()
 	for i in range(numCards):
 		r = random.randrange(numCards)
 		temp = cards[i]
@@ -54,7 +55,7 @@ if numPlayers >= 2 and numPlayers <= 6:
 	#waits for moderator's input, acts accordingly
         response = 's'
 	while response != 'q':
-		response = raw_input("(s)tatus,coun(t)s,(e)xchange,s(h)uffle,(c)oins,(d)estroy,ta(x),stea(l),(i)ncome,(f)oreign aid,(q)uit:")
+		response = raw_input("(s)tatus\ncoun(t)s\n(e)xchange\ns(h)uffle\n(c)oins\n(d)estroy\nta(x)\nstea(l)\n(i)ncome\n(f)oreign aid\n(q)uit:")
 		#Prints out raw statistics of the current game
 		if response == 's':
 			for player in players:
