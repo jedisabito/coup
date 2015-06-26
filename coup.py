@@ -1,4 +1,4 @@
-#Author: Joe DiSabito
+#Author: Joe DiSabito, Ryan Hartman
 #Description: Allows automation of Coup game without cards. Requires moderator
 #to operate. Python is weird about dictionaries (no list elements allowed),
 #which made the Ambassador ability very difficult. Would have liked
