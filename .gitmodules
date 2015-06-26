@@ -1,0 +1,3 @@
+[submodule "lib/PodSixNet"]
+	path = lib/PodSixNet
+	url = https://github.com/chr15m/PodSixNet.git
