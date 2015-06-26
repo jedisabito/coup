@@ -1,9 +1,6 @@
 #Author: Joe DiSabito, Ryan Hartman
 #Description: Allows automation of Coup game without cards. Requires moderator
-#to operate. Python is weird about dictionaries (no list elements allowed),
-#which made the Ambassador ability very difficult. Would have liked
-#each person's hand to be a list of cards, but that was not possible.
-#Anyways, enjoy!
+#to operate. Enjoy!
 #!/usr/bin/python
 
 import sys, os, random, time
