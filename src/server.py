@@ -5,14 +5,14 @@ import sys, os, random, time, threading
 class CoupServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     pass
 
-class CoupServerRequestHandler(SocketServer.BaseRequestHandler):
+class CoupRequestHandler(SocketServer.BaseRequestHandler):
         def __init__(self, callback, *args, **keys):
             self.cg = callback
             SocketServer.BaseRequestHandler.__init__(self, *args, **keys)
 
         def handle(self):
             while True:
-                q = self.cg.PlayerQueue()
+                q = self.cg.players
                 raddr = self.client_address[0]
                 self.data = self.request.recv(1024).strip()
 
@@ -25,9 +25,12 @@ class CoupServerRequestHandler(SocketServer.BaseRequestHandler):
                     else:
                         self.request.sendall("Wait your turn!\n")
                 else:
-                    newPlayer = Player(raddr, "Alec", self.cg.Deck().deal(), self.cg.Deck().deal())
+                    newPlayer = Player(raddr, "Alec", self.cg.deck.deal(), self.cg.deck.deal())
                     q.addPlayer(newPlayer)
                     self.welcome("Alec")
+
+        def parseMessage(self):
+            return
 
         def welcome(self, name):
             self.request.sendall("{} joined the game!\n".format(name))
@@ -61,6 +64,21 @@ class PlayerQueue():
                 return True
         return False
 
+    def getPlayerByName(self, name):
+        for player in self.players:
+            if name == player.name:
+                return player
+        return None
+
+
+'''The moderator is a class responsible for carrying out actions on behalf of the player.'''
+class Moderator():
+    def __init__(self):
+        return
+
+    #Define methods that interact between two players or the player and the deck
+
+
 class CoupGame(object):
         def __init__(self):
                 self.deck = Deck()
@@ -73,11 +91,8 @@ class CoupGame(object):
                 #deck shuffled
                 self.deck.shuffle()
 
-        def PlayerQueue(self):
-            return self.players
-
-        def Deck(self):
-            return self.deck
+        def renderCard(card):
+            return
 
 class Player(object):
         def __init__(self, ipAddr, name, card1, card2):
@@ -103,12 +118,36 @@ class Player(object):
                 print "{} is NOT READY".format(self.name)
 
         def lookAtHand(self):
-                for card in self.cards:
-                        print card
+            for card in self.cards:
+                    print card
+
+class Card(object):
+    def __init__(self, type):
+        self.type = type
+        self.alive = True
+
+    def kill(self):
+        self.alive = False
 
 class Deck(object):
         def __init__(self):
-                self.cards = ['Contessa', 'Contessa', 'Contessa', 'Duke', 'Duke', 'Duke', 'Captain', 'Captain', 'Captain', 'Assassin', 'Assassin', 'Assassin', 'Ambassador' ,'Ambassador' ,'Ambassador']
+                self.cards = [
+                Card('Contessa'),
+                Card('Contessa'),
+                Card('Contessa'),
+                Card('Duke'),
+                Card('Duke'),
+                Card('Duke'),
+                Card('Captain'),
+                Card('Captain'),
+                Card('Captain'),
+                Card('Assassin'),
+                Card('Assassin'),
+                Card('Assassin'),
+                Card('Ambassador'),
+                Card('Ambassador'),
+                Card('Ambassador')]
+
                 self.numCards = 15
 
         def shuffle(self):
@@ -129,12 +168,12 @@ class Deck(object):
 
 def handler_factory(callback):
     def createHandler(*args, **keys):
-        return CoupServerRequestHandler(callback, *args, **keys)
+        return CoupRequestHandler(callback, *args, **keys)
     return createHandler
 
 if __name__ == "__main__":
     print "Welcome to COUP!\n"
-    HOST, PORT = "130.215.249.79", 1450
+    HOST, PORT = "130.215.249.79", 5120
     cg = CoupGame()
 
     server = CoupServer((HOST, PORT), handler_factory(cg) )
