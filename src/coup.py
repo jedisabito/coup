@@ -1,8 +1,7 @@
-#Author: Joe DiSabito, Ryan Hartman
+#Author: Joe DiSabito, Ryan Hartman, Alec Benson
 #Description: Allows automation of Coup game without cards. Requires moderator
 #to operate. Enjoy!
 #!/usr/bin/python
-
 import sys, os, random, time
 
 class Player(object):
@@ -19,16 +18,16 @@ class Player(object):
         def lookAtHand(self):
                 for card in self.cards:
                         print card
-                
+
 class Deck(object):
         def __init__(self):
-                self.cards = self.cards = ['Contessa', 'Contessa', 'Contessa', 'Duke', 'Duke', 'Duke', 'Captain', 'Captain', 'Captain', 'Assassin', 'Assassin', 'Assassin', 'Ambassador' ,'Ambassador' ,'Ambassador']
+                self.cards = ['Contessa', 'Contessa', 'Contessa', 'Duke', 'Duke', 'Duke', 'Captain', 'Captain', 'Captain', 'Assassin', 'Assassin', 'Assassin', 'Ambassador' ,'Ambassador' ,'Ambassador']
                 self.numCards = 15
 
         def shuffle(self):
                 random.seed()
                 random.shuffle(self.cards)
-                
+
         def deal(self):
                 self.numCards -= 1
                 print "Dealing Card: numCards = ", self.numCards
@@ -41,63 +40,43 @@ class Deck(object):
         def addCard(self, card):
                 self.cards.append(card)
 
-        
-
-
-        
-        
-
 class CoupGame(object):
         def __init__(self):
-                #self.cards = ['Contessa', 'Contessa', 'Contessa', 'Duke', 'Duke', 'Duke', 'Captain', 'Captain', 'Captain', 'Assassin', 'Assassin', 'Assassin', 'Ambassador' ,'Ambassador' ,'Ambassador']
                 self.deck = Deck()
-                #self.numCards = 15
                 self.destroyedCards = []
                 self.players = {}
-                self.numPlayers = input("Number of players (2-6): ")
+                self.numPlayers = ""
 
-                if self.numPlayers >= 2 and self.numPlayers <= 6:
-	                #coins dispersed
-	                self.treasury = 50 - 2 * self.numPlayers #50 is starting amt
+                while self.numPlayers < 2 or self.numPlayers > 6:
+                    try:
+                        self.numPlayers = int(raw_input("Number of players (2-6): "))
+                    except ValueError:
+                        print "Please enter a number between 2 and 6"
 
-	                #deck shuffled
-	                self.deck.shuffle()
 
-	                #cards dealt
-	                for i in range(self.numPlayers):
-		                name = raw_input("Player name: ")
-                                newPlayer = Player(self.deck.deal(), self.deck.deal())
-		                #players.append((name,cards[numCards - 1], cards[numCards - 2], 2))
-	                        self.players[name] = newPlayer
-	                        print self.players[name].aboutMe()
-                                
+                #coins dispersed
+                self.treasury = 50 - 2 * self.numPlayers #50 is starting amt
 
-        
-                
+                #deck shuffled
+                self.deck.shuffle()
 
-#initialized deck of cards, numCards used as an "index pointer", tells us 
+                #cards dealt
+                for i in range(self.numPlayers):
+                    name = raw_input("Player name: ")
+                    newPlayer = Player(self.deck.deal(), self.deck.deal())
+                    self.players[name] = newPlayer
+                    print self.players[name].aboutMe()
+
+#initialized deck of cards, numCards used as an "index pointer", tells us
 #where the last card of the deck is (numCards - 1)
-
-
-
 #after cards are lost, they are added to this list
-
-
 #starting treasury
-
-
 #will become a dictionary with each player's name as keys, each entry
-#provides information on that player (cards held, number of coins) 
-
-
+#provides information on that player (cards held, number of coins)
 print "Welcome to COUP!\n"
 cg = CoupGame()
 
-
-
-
-
-	#waits for moderator's input, acts accordingly
+#waits for moderator's input, acts accordingly
 response = 's'
 while response != 'q':
         response = raw_input("(s)tatus\ncoun(t)s\n(e)xchange\ns(h)uffle\n(c)oins\n(d)estroy\nta(x)\nstea(l)\n(i)ncome\n(f)oreign aid\n(q)uit:")
@@ -120,67 +99,18 @@ while response != 'q':
                 cg.players[name].draw(cg.deck.deal())
 
                 cg.players[name].lookAtHand()
-                #print cards[numCards - 1], cards[numCards - 2]
 
                 #This will enforce handsizes. This is the only time someone's
                 #hand should be bigger than 2
-                                    
                 to_deck = raw_input("which card will you discard first? (0-3): ")
                 cg.deck.addCard(cg.players[name].cards[int(to_deck)])
                 cg.players[name].cards.remove(cg.players[name].cards[int(to_deck)])
 
                 cg.players[name].lookAtHand()
-                
+
                 to_deck = raw_input("which card will you discard second? (0-2): ")
                 cg.deck.addCard(cg.players[name].cards[int(to_deck)])
                 cg.players[name].cards.remove(cg.players[name].cards[int(to_deck)])
-                        
-                # if not (players[name][1] == "GONE" or players[name][2] == "GONE"):
-                #         exchange = input("Exchange 0 (neither)\n" +
-                #                          "Exchange 1 (first with first)\n" +
-                #                          "Exchange 2 (first with second)\n" +
-                #                          "Exchange 3 (second with first)\n" +
-                #                          "Exchange 4 (second with second)\n" +
-                #                          "Exchange 5 (both):")
-                #         if exchange == 5:
-                #                 temp = [players[name][1], players[name][2]]
-                #                 players[name][0] = cards[numCards - 1]
-                #                 players[name][1] = cards[numCards - 2]
-                #                 cards[numCards - 1] = temp[0]
-                #                 cards[numCards - 2] = temp[1]
-                #         elif exchange == 4:
-                #                 temp = players[name][1]
-                #                 players[name][1] = cards[numCards - 2]
-                #                 cards[numCards - 2] = temp
-                #         elif exchange == 3:
-                #                 temp = players[name][1]
-                #                 players[name][1] = cards[numCards - 1]
-                #                 cards[numCards - 1] = temp
-                #         elif exchange == 2:
-                #                 temp = players[name][0]
-                #                 players[name][0] = cards[numCards - 2]
-                #                 cards[numCards - 2] = temp
-                #         elif exchange == 1:
-                #                 temp = players[name][0]
-                #                 players[name][0] = cards[numCards - 1]
-                #                 cards[numCards - 1] = temp
-                # else:
-                #         exchange = input("Exchange 0 (neither)\n" +
-                #                          "Exchange 1 (with first)\n" +
-                #                          "Exchange 2 (with second):")
-                #         card = 0
-                #         temp = players[name][card]
-                #         if temp == "GONE":
-                #                 card = card + 1
-                #                 temp = players[name][card]
-
-                #         if exchange == 2:
-                #                 players[name][card] = cards[numCards - 2]
-                #                 cards[numCards - 2] = temp
-                #         elif exchange == 1:	
-                #                 players[name][card] = cards[numCards - 1]
-                #                 cards[numCards - 1] = temp
-
                 cg.deck.shuffle()
 
         #Coin counts (without held cards)
@@ -229,8 +159,8 @@ while response != 'q':
         elif response == 'd':
                 name = raw_input("Player name:")
                 print cg.players[name].aboutMe()
-                
+
                 remove = input("Which to remove(0-1):")
-                cg.destroyedCards.append(cg.players[name].cards[int(remove)]) 
+                cg.destroyedCards.append(cg.players[name].cards[int(remove)])
                 cg.players[name].cards.remove(cg.players[name].cards[int(remove)])
                 print cg.players[name].aboutMe()
