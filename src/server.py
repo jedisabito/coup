@@ -10,30 +10,41 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
             self.cg = callback
             SocketServer.BaseRequestHandler.__init__(self, *args, **keys)
 
+        '''Broadcasts message to all connected players'''
+        def broadcast_message(self, message):
+            for player in self.cg.players.list():
+                player.conn.sendall(message)
+
         def handle(self):
+            q = self.cg.players
+            conn = self.request
+
             while True:
-                q = self.cg.players
-                raddr = self.client_address[0]
-                self.data = self.request.recv(1024).strip()
-
-                #If the player issuing the request is in the game...
-                if q.currentlyPlaying(raddr):
-                    #If it is the requesting player's turn...
-                    if q.getPlayerTurn().ipAddr == raddr:
-                        self.request.sendall("It's your turn!\n")
-                        #Parse request (self.data)
+                try:
+                    self.data = conn.recv(1024).strip()
+                    #If the player issuing the request is in the game...
+                    if q.currentlyPlaying(conn):
+                        #If it is the requesting player's turn...
+                        player = q.getPlayerTurn()
+                        if player.conn == conn:
+                            conn.sendall("It's your turn!\n")
+                            self.chatMessage(player, self.data)
+                        else:
+                            conn.sendall("Wait your turn!\n")
                     else:
-                        self.request.sendall("Wait your turn!\n")
-                else:
-                    newPlayer = Player(raddr, "Alec", self.cg.deck.deal(), self.cg.deck.deal())
-                    q.addPlayer(newPlayer)
-                    self.welcome("Alec")
+                        newPlayer = Player(conn, "Alec", self.cg.deck.deal(), self.cg.deck.deal())
+                        q.addPlayer(newPlayer)
+                        self.welcome("Alec")
+                except IOError:
+                    conn.close()
+                    q.removePlayer(conn)
+                    return
 
-        def parseMessage(self):
-            return
+        def chatMessage(self, player, message):
+            self.broadcast_message("{0}: {1}\n".format(player.name, message))
 
         def welcome(self, name):
-            self.request.sendall("{} joined the game!\n".format(name))
+            self.broadcast_message("{} joined the game!\n".format(name))
 
 #A data structure containing a list of player objects
 #Used to keep track of players and turns
@@ -44,7 +55,12 @@ class PlayerQueue():
 
     def addPlayer(self, player):
             self.players.append(player)
-            print "Added player!"
+
+    def removePlayer(self, player):
+            try:
+                self.players.remove(player)
+            except:
+                print "Could not remove player: no matches"
 
     def getPlayerTurn(self):
         if self.numPlayers > 0:
@@ -52,15 +68,18 @@ class PlayerQueue():
         else:
             return None
 
+    def list(self):
+        return list(self.players)
+
     def advanceTurn(self):
         return self.players.rotate(1)
 
     def numPlayers(self):
         return len(self.players)
 
-    def currentlyPlaying(self, ipAddr):
+    def currentlyPlaying(self, conn):
         for player in self.players:
-            if ipAddr == player.ipAddr:
+            if conn == player.conn:
                 return True
         return False
 
@@ -70,14 +89,10 @@ class PlayerQueue():
                 return player
         return None
 
-
 '''The moderator is a class responsible for carrying out actions on behalf of the player.'''
 class Moderator():
-    def __init__(self):
-        return
-
-    #Define methods that interact between two players or the player and the deck
-
+    def __init__(self, cg):
+        self.cg = cg
 
 class CoupGame(object):
         def __init__(self):
@@ -91,16 +106,13 @@ class CoupGame(object):
                 #deck shuffled
                 self.deck.shuffle()
 
-        def renderCard(card):
-            return
-
 class Player(object):
-        def __init__(self, ipAddr, name, card1, card2):
+        def __init__(self, conn, name, card1, card2):
                 self.name = name
                 self.coins = 2
                 self.cards = [card1, card2]
                 self.ready = False
-                self.ipAddr = ipAddr
+                self.conn = conn
         def aboutMe(self):
                 pCards = ""
                 for card in self.cards:
@@ -113,13 +125,15 @@ class Player(object):
         def toggleReady(self):
             self.ready = not self.ready
             if self.ready:
-                print "{} is READY!".format(self.name)
+                return "{} is READY!".format(self.name)
             else:
-                print "{} is NOT READY".format(self.name)
+                return "{} is NOT READY".format(self.name)
 
         def lookAtHand(self):
+            hand = ""
             for card in self.cards:
-                    print card
+                hand += card.renderCard(True)
+            return hand
 
 class Card(object):
     def __init__(self, type):
@@ -128,6 +142,12 @@ class Card(object):
 
     def kill(self):
         self.alive = False
+
+    def renderCard(self, reveal):
+        if self.alive and not reveal:
+            return "____\n|    |\n|    |\n|    |\n|____|\n"
+        else:
+            return "____\n|    |\n|{}|\n|    |\n|____|\n".format(self.type)
 
 class Deck(object):
         def __init__(self):
@@ -161,7 +181,7 @@ class Deck(object):
 
         def fanUp(self):
                 for i, card in enumerate(self.cards):
-                        print i, " ", card
+                        print card.renderCard(True)
 
         def addCard(self, card):
                 self.cards.append(card)
@@ -173,9 +193,9 @@ def handler_factory(callback):
 
 if __name__ == "__main__":
     print "Welcome to COUP!\n"
-    HOST, PORT = "130.215.249.79", 5120
-    cg = CoupGame()
+    HOST, PORT = "localhost", 7050
 
+    cg = CoupGame()
     server = CoupServer((HOST, PORT), handler_factory(cg) )
     ip, port = server.server_address
 
