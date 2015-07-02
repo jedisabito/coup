@@ -18,4 +18,5 @@ Version 0.4 (Joe DiSabito, Alec Benson, Ryan Hartman):
 -Added better functionality for the server, now allows choice of IP address and port number
 -Function clean-up, coin functions merged, card destruction functions merged
 -Robust voting system added to allow challenges, protection, readying
+-All abilites functional (including Captain, Ambassador)
 -More error checking
