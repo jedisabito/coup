@@ -214,7 +214,7 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
         '''
         Performs a coup on another player
         '''
-        def coup(self, player, parts):
+        def destroy(self, player, parts, coins):
             try:
                 if player is None:
                     raise UnregisteredPlayerError(self.request)
@@ -229,54 +229,27 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                 if name == player.name:
                     raise InvalidCommandError(self.request, "You cannot coup yourself. Nice try.\n")
 
-                if player.coins < 7:
+                if player.coins < coins:
                     raise NotEnoughCoinsError(self.request)
 
                 target = self.cg.players.getPlayerByName(name)
                 if target == None:
                     raise NoSuchPlayerError(self.request, name)
 
-                player.coins -= 7
-                self.cg.treasury += 7
-                self.broadcast_message("{0} called a COUP on {1}.\n".format(player.name, target.name))
-                self.broadcast_message(target.killRandomCardInHand())
+                player.coins -= coins
+                self.cg.treasury += coins
+                if coins == 7:
+                	self.broadcast_message("{0} called a COUP on {1}.\n".format(player.name, target.name))
+                elif coins == 3:
+			self.broadcast_message("{0} is attempting to ASSASSINATE {1}.\n".format(player.name, target.name))
+                	#TODO: ADD CHALLENGE/PROTECTION CHANCE HERE
+                else: #challenge
+			self.broadcast_message(".\n".format(player.name, target.name))
+		self.broadcast_message(target.killCardInHand())
                 self.broadcast_message(self.cg.players.advanceTurn())
             except (UnregisteredPlayerError, NotYourTurnError, InvalidCommandError, NoSuchPlayerError, NotEnoughCoinsError) as e:
                 pass
 
-
-        '''
-        Performs an assassination on another player
-        '''
-        def assasinate(self, player, parts):
-            try:
-                if player is None:
-                    raise UnregisteredPlayerError(self.request)
-
-                if not self.cg.players.isPlayersTurn(player):
-                    raise NotYourTurnError(self.request)
-
-                if len(parts) < 2:
-                    raise InvalidCommandError(self.request, "You need to specify a player (by name) that you want to assasinate\n")
-
-                name = parts[1]
-                if name == player.name:
-                    raise InvalidCommandError(self.request, "You cannot assasinate yourself. Nice try.\n")
-
-                if player.coins < 3:
-                    raise NotEnoughCoinsError(self.request)
-
-                target = self.cg.players.getPlayerByName(name)
-                if target == None:
-                    raise NoSuchPlayerError(self.request, name)
-
-                player.coins -= 3
-                self.cg.treasury += 3
-                self.broadcast_message("{0} assasinated one of {1}'s cards!.\n".format(player.name, target.name))
-                self.broadcast_message(target.killRandomCardInHand())
-                self.broadcast_message(self.cg.players.advanceTurn())
-            except (UnregisteredPlayerError, NotYourTurnError, InvalidCommandError, NoSuchPlayerError, NotEnoughCoinsError) as e:
-                pass
 
         '''
         Ends the player's turn, or raises a NotYourTurnError if it is not the player's turn to move
@@ -350,6 +323,8 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
         def parseRequest(self, player, message):
                 parts = message.split(' ',1)
                 command = parts[0]
+                COUP = 7
+		ASSASSINATE = 3
 
                 if command == "/say":
                     self.chatMessage(player, parts)
@@ -368,9 +343,9 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                 elif command == "/aid":
                     self.foreign_aid(player,parts)
                 elif command == "/coup":
-                    self.coup(player, parts)
+                    self.destroy(player, parts, COUP)
                 elif command == "/assasinate":
-                    self.assasinate(player, parts)
+                    self.destroy(player, parts, ASSASSINATE)
                 elif command == "/register":
                     self.register(parts)
                 elif command == "/ready":
@@ -478,13 +453,14 @@ class Player(object):
                 hand += card.renderCard(reveal)
             return hand
 
-        def killRandomCardInHand(self):
+        def killCardInHand(self):
             alivecards = []
             for card in self.cards:
                 if card.alive:
                     alivecards.append(card)
             if alivecards == []:
                 return "{} has no living cards!\n".format(self.name)
+            #TODO: Choice is not random, player chooses
             choice = random.choice(alivecards)
             choice.kill()
             return "{0}'s {1} was just killed!\n".format(self.name, choice.type)
