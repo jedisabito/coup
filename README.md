@@ -8,10 +8,15 @@ To run: "python server.py"
 Anyone can join with telnet.
 
 BACKLOG:
+
 1) Spellcheck
+
 2) Challenges
+
 3) Protection
+
 4) Ready / Not Ready
+
 5) Exiting
 
 BACKLOG [BONUS]:
