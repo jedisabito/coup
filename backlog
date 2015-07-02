@@ -1,1 +1,22 @@
+BACKLOG:
+
+1) Spellcheck
+-assassinate
+
+2) Challenges
+-Listen for "/challenge"
+-Listening ends with "/challenge" or X "/accept"'s, where X is number of players
+-Timeout timer
+-Resolve challenges with card elimination
+
+3) Protection
+-Listen for target player, "/bluff" for assassination or "/bluff [role]" for steal or "/accept"
+-Allow for challenges afterward
+
+4) Ready / Not Ready
+
+5) Exiting
+
+BACKLOG [BONUS]:
+-Cleaning up IO
 
