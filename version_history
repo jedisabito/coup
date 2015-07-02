@@ -1,0 +1,16 @@
+Version 0.1 (Joe DiSabito):
+-Very basic code completed, no rules regulation and requires moderator
+-Underlying data structure messy
+
+Version 0.2 (Ryan Hartman):
+-Underlying data structure overhauled, now using objects
+-Various clean-up
+
+Version 0.3 (Alec Benson):
+-Game is now hosted on a central server, players join with telnet
+-Steps toward automation of game, no challenges/protection yet
+-Lots of error checking added
+-Various clean-up
+
+Version 0.4 (Joe DiSabito, Alec Benson):
+IN PROGRESS
