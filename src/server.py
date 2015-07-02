@@ -513,7 +513,7 @@ def handler_factory(callback):
 
 if __name__ == "__main__":
     print "Welcome to COUP!\n"
-    HOST, PORT = "localhost", 7086
+    HOST, PORT = "localhost", int(sys.argv[1])
 
     cg = CoupGame()
     server = CoupServer((HOST, PORT), handler_factory(cg) )
