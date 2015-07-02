@@ -8,11 +8,11 @@ To run: "python server.py"
 Anyone can join with telnet.
 
 BACKLOG:
-
--Spellcheck
--Challenges
--Protections (Captain, Ambassador, Contessa) [note: can be challenged]
--Clean exiting
+1) Spellcheck
+2) Challenges
+3) Protection
+4) Ready / Not Ready
+5) Exiting
 
 BACKLOG [BONUS]:
 -Cleaning up IO
