@@ -1,3 +1,5 @@
+#Authors: Joe DiSabito, Ryan Hartman, Alec Benson
+
 import SocketServer
 from collections import deque
 import sys, os, random, time, threading
