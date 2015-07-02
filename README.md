@@ -8,6 +8,7 @@ To run: "python server.py"
 Anyone can join with telnet.
 
 BACKLOG:
+
 -Spellcheck
 -Challenges
 -Protections (Captain, Ambassador, Contessa) [note: can be challenged]
