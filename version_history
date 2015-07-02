@@ -6,11 +6,16 @@ Version 0.2 (Ryan Hartman):
 -Underlying data structure overhauled, now using objects
 -Various clean-up
 
+CURRENT:
 Version 0.3 (Alec Benson):
 -Game is now hosted on a central server, players join with telnet
 -Steps toward automation of game, no challenges/protection yet
 -Lots of error checking added
 -Various clean-up
 
+IN PROGRESS:
 Version 0.4 (Joe DiSabito, Alec Benson, Ryan Hartman):
-IN PROGRESS
+-Added better functionality for the server, now allows choice of IP address and port number
+-Function clean-up, coin functions merged, card destruction functions merged
+-Robust voting system added to allow challenges, protection, readying
+-More error checking
