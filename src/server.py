@@ -413,8 +413,11 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                     self.coup(player, parts)
                 elif command == "/assassinate":
                     self.assassinate(player, parts)
+		#TODO: Implement exchange and steal
 		elif command == "/exchange":
-		    
+		    self.request.sendall("Not yet implemented.\n")
+		elif command == "/steal":
+		    self.request.sendall("Not yet implemented.\n") 
                 elif command == "/register":
                     self.register(parts)
                 elif command == "/ready":
