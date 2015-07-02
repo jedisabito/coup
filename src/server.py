@@ -178,6 +178,97 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
             except (UnregisteredPlayerError, NotYourTurnError, NotEnoughTreasuryCoinsError) as e:
                 pass
 
+	'''
+	Functions (duke, foreignAid, income) using getCoins as helper function
+	'''
+	def tax(self, player, parts):
+	    self.getCoins(player, parts, 3)
+
+	def foreignAid(self, player, parts):
+	    self.getCoins(player, parts, 2)
+
+	def income(self, player, parts):
+	    self.getCoins(player, parts, 1)
+
+	'''
+	def steal(self, player, parts):
+	    
+	def exchange(self, player, parts):
+             try:
+                if player is None:
+                    raise UnregisteredPlayerError(self.request)
+
+                if not self.cg.players.isPlayersTurn(player):
+                    raise NotYourTurnError(self.request)
+
+                if player.coins < coins:
+                    raise NotEnoughCoinsError(self.request)
+
+                target = self.cg.players.getPlayerByName(name)
+                if target == None:
+                    raise NoSuchPlayerError(self.request, name)
+
+                message = "2 cards dealt to" + name
+		
+
+                #Same line twice, not sure if its worth consolidating
+                player.draw(cg.deck.deal())
+                player.draw(cg.deck.deal())
+
+                cg.players[name].lookAtHand()
+                #print cards[numCards - 1], cards[numCards - 2]
+
+                #This will enforce handsizes. This is the only time someone's
+                #hand should be bigger than 2
+
+                to_deck = raw_input("which card will you discard first? (0-3): ")
+                cg.deck.addCard(cg.players[name].cards[int(to_deck)])
+                cg.players[name].cards.remove(cg.players[name].cards[int(to_deck)])
+
+                cg.players[name].lookAtHand()
+
+                to_deck = raw_input("which card will you discard second? (0-2): ")
+                cg.deck.addCard(cg.players[name].cards[int(to_deck)])
+                cg.players[name].cards.remove(cg.players[name].cards[int(to_deck)])
+
+
+                cg.deck.shuffle()
+
+
+
+             except (UnregisteredPlayerError, NotYourTurnError, InvalidCommandError, NoSuchPlayerError, NotEnoughCoinsError) as e:
+                pass
+
+
+             if not cg.checkBluff(name, "Ambassador"):
+                                
+                 print "2 cards dealt to", name
+                                
+                 #Same line twice, not sure if its worth consolidating
+                 cg.players[name].draw(cg.deck.deal())
+                 cg.players[name].draw(cg.deck.deal())
+                                
+                 cg.players[name].lookAtHand()
+                 #print cards[numCards - 1], cards[numCards - 2]
+                                
+                 #This will enforce handsizes. This is the only time someone's
+                 #hand should be bigger than 2
+                                
+                 to_deck = raw_input("which card will you discard first? (0-3): ")
+                 cg.deck.addCard(cg.players[name].cards[int(to_deck)])
+                 cg.players[name].cards.remove(cg.players[name].cards[int(to_deck)])
+                                
+                 cg.players[name].lookAtHand()
+                                
+                 to_deck = raw_input("which card will you discard second? (0-2): ")
+                 cg.deck.addCard(cg.players[name].cards[int(to_deck)])
+                 cg.players[name].cards.remove(cg.players[name].cards[int(to_deck)])
+                                
+                                
+                                
+                 cg.deck.shuffle()
+	'''
+
         '''
         Performs card destruction (coup, assassination, challenge)
         '''
@@ -190,11 +281,11 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                     raise NotYourTurnError(self.request)
 
                 if len(parts) < 2:
-                    raise InvalidCommandError(self.request, "You need to specify a player (by name) that you want to coup\n")
+                    raise InvalidCommandError(self.request, "You need to specify a player (by name) that you want to target\n")
 
                 name = parts[1]
                 if name == player.name:
-                    raise InvalidCommandError(self.request, "You cannot coup yourself. Nice try.\n")
+                    raise InvalidCommandError(self.request, "You cannot target yourself. Nice try.\n")
 
                 if player.coins < coins:
                     raise NotEnoughCoinsError(self.request)
@@ -208,7 +299,7 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                 if coins == 7:
                 	self.broadcast_message("{0} called a COUP on {1}.\n".format(player.name, target.name))
                 elif coins == 3:
-			self.broadcast_message("{0} is attempting to ASSASSINATE {1}.\n".format(player.name, target.name))
+			self.broadcast_message("{0} will ASSASSINATE {1}.\n".format(player.name, target.name))
                 	#TODO: ADD CHALLENGE/PROTECTION CHANCE HERE
                 else: #challenge
 			self.broadcast_message(".\n".format(player.name, target.name))
@@ -217,6 +308,17 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
             except (UnregisteredPlayerError, NotYourTurnError, InvalidCommandError, NoSuchPlayerError, NotEnoughCoinsError) as e:
                 pass
 
+	'''
+	Assassination (using destroy as helper function), card destruction with loss of 3 coins
+	'''
+	def assassinate(self, player, parts):
+	    self.destroy(player, parts, 3)
+
+	'''
+	Coup (using destroy as helper function), card destruction with loss of 7 coins
+        '''
+	def coup(self,player,parts):
+	    self.destroy(player, parts, 7)
 
         '''
         Ends the player's turn, or raises a NotYourTurnError if it is not the player's turn to move
@@ -281,7 +383,7 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
         Prints a help message for clients
         '''
         def help(self, player, parts):
-            message = "\nCOMMANDS:\n/say\n/exit\n/help\n/hand\n/tax\n/register\n/ready\n/endturn\n"
+            message = "\nCOMMANDS:\n/say\n/exit\n/help\n/hand\n/tax\n/register\n/exchange\n/income\n/aid\n/steal\n/assassinate\n/ready\n/endturn\n"
             player.conn.sendall(message)
 
         '''
@@ -290,11 +392,6 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
         def parseRequest(self, player, message):
                 parts = message.split(' ',1)
                 command = parts[0]
-                COUP = 7
-		ASSASSINATE = 3
-                TAX = 3
-                FOREIGN_AID = 2
-                INCOME = 1
 
                 if command == "/say":
                     self.chatMessage(player, parts)
@@ -307,15 +404,17 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                 elif command == "/coins":
                     self.showCoins(player, parts)
                 elif command == "/tax":
-                    self.getCoins(player, parts, TAX)
+                    self.tax(player, parts)
                 elif command == "/income":
-                    self.getCoins(player, parts, INCOME)
+                    self.income(player, parts)
                 elif command == "/aid":
-                    self.getCoins(player, parts, FOREIGN_AID)
+                    self.foreignAid(player, parts)
                 elif command == "/coup":
-                    self.destroy(player, parts, COUP)
-                elif command == "/assasinate":
-                    self.destroy(player, parts, ASSASSINATE)
+                    self.coup(player, parts)
+                elif command == "/assassinate":
+                    self.assassinate(player, parts)
+		elif command == "/exchange":
+		    
                 elif command == "/register":
                     self.register(parts)
                 elif command == "/ready":
