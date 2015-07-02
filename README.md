@@ -5,6 +5,7 @@ Requires someone to moderate the game (as a non-player).
 Supports 2-6 players (no support for additional 2 player rules).
 
 To run: "python server.py"
+
 Anyone can join with telnet.
 
 BACKLOG:
