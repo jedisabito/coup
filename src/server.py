@@ -513,10 +513,19 @@ def handler_factory(callback):
 
 if __name__ == "__main__":
     print "Welcome to COUP!\n"
-    HOST, PORT = "localhost", int(sys.argv[1])
+    HOST, PORT = sys.argv[1], int(sys.argv[2])
+
+    if sys.argv[1] == "external":
+        HOST = urllib.urlopen('http://canihazip.com/s').read()
+        print "Network-facing IP:", HOST
 
     cg = CoupGame()
-    server = CoupServer((HOST, PORT), handler_factory(cg) )
+
+    try:
+        server = CoupServer((HOST, PORT), handler_factory(cg) )
+    except Exception as e:
+	server = CoupServer(('localhost', PORT), handler_factory(cg) )
+        print "External binding FAILED. Running LOCALLY."
     ip, port = server.server_address
 
     server_thread = threading.Thread(target=server.serve_forever)
