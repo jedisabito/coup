@@ -10,6 +10,36 @@ class UnregisteredPlayerError(Exception):
         self.conn = conn
         conn.sendall("Please register yourself with /register <name> before you can join.\n")
 
+class AlreadyRegisteredPlayerError(Exception):
+    def __init__(self, conn):
+        self.conn = conn
+        conn.sendall("You have already registered.\n")
+
+class NotYourTurnError(Exception):
+    def __init__(self, conn):
+        self.conn = conn
+        conn.sendall("It is not your turn to move yet.\n")
+
+class NoSuchPlayerError(Exception):
+    def __init__(self, conn, name):
+        self.conn = conn
+        conn.sendall("Failed to find a player with the name {}.\n".format(name))
+
+class NotEnoughTreasuryCoinsError(Exception):
+    def __init__(self, conn):
+        self.conn = conn
+        conn.sendall("There are not enough coins in the treasury to perform this action.\n")
+
+class InvalidCommandError(Exception):
+    def __init__(self, conn, message):
+        self.conn = conn
+        conn.sendall(message)
+
+class NotEnoughCoinsError(Exception):
+    def __init__(self, conn):
+        self.conn = conn
+        conn.sendall("You do not have enough coins to perform this action.\n")
+
 class CoupRequestHandler(SocketServer.BaseRequestHandler):
         def __init__(self, callback, *args, **keys):
             self.cg = callback
@@ -34,7 +64,7 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                     player = q.getPlayer(conn)
                     self.parseRequest(player, self.data)
                     #If the player issuing the request is in the game...
-                    if not q.currentlyPlaying(conn):
+                    if not q.isClientRegistered(conn):
                         raise UnregisteredPlayerError(conn)
                 except IOError:
                     conn.close()
@@ -65,37 +95,202 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
             return player.conn.close()
 
         '''
-        Prints a help message for clients
-        '''
-        def help(self, player, parts):
-            message = "\nCOMMANDS:\n/say\n/exit\n/help\n"
-            player.conn.sendall(message)
-
-        '''
-        Prints the player's current hand
+        Prints the target player's current hand, or display's the current player's hand if no name is provided
         '''
         def showHand(self, player, parts):
-            if player is None:
-                raise UnregisteredPlayerError(self.request)
-            hand = player.getHand()
-            player.conn.sendall(hand)
+            try:
+                if player is None:
+                    raise UnregisteredPlayerError(self.request)
+
+                if len(parts) >= 2:
+                    name = parts[1]
+                    #If the player enters their own name
+                    if name == player.name:
+                        return player.conn.sendall(player.getHand(True))
+
+                    #If the player enters another player's name
+                    target = self.cg.players.getPlayerByName(name)
+                    if target == None:
+                        raise NoSuchPlayerError(self.request, name)
+                    return player.conn.sendall(target.getHand(False))
+                else:
+                    #The player enters no name (default)
+                    return player.conn.sendall(player.getHand(True))
+
+            except (UnregisteredPlayerError, NoSuchPlayerError) as e:
+                pass
 
         '''
         Prints the number of coins the player has
         '''
         def showCoins(self, player, parts):
-            if player is None:
-                raise UnregisteredPlayerError(self.request)
-            message = "Coins: {}\n".format(player.coins)
-            player.conn.sendall(message)
+            try:
+                if player is None:
+                    raise UnregisteredPlayerError(self.request)
+                message = "Coins: {}\n".format(player.coins)
+                player.conn.sendall(message)
+            except UnregisteredPlayerError as e:
+                pass
 
         '''
-        Performs a coup tax
+        Lists all of the players and the number of coins that they have
+        '''
+        def listplayers(self, parts):
+            formatted_list = ""
+
+            for player in self.cg.players.list():
+                formatted_list += "{0} ({1} Coins)\n".format(player.name, player.coins)
+
+            if not formatted_list:
+                return self.request.sendall("No registered players.\n")
+
+            self.request.sendall(formatted_list)
+
+        '''
+        Performs a Duke tax, which grants the player 3 coins from the treasury
         '''
         def tax(self, player, parts):
-            if player is None:
-                raise UnregisteredPlayerError(self.request)
-            return
+            try:
+                if player is None:
+                    raise UnregisteredPlayerError(self.request)
+
+                if not self.cg.players.isPlayersTurn(player):
+                    raise NotYourTurnError(self.request)
+
+                if self.cg.treasury < 3:
+                    raise NotEnoughTreasuryCoinsError(self.request)
+
+                player.coins += 3
+                self.cg.treasury -= 3
+                self.broadcast_message("{} called a TAX, the Duke ability.\n".format(player.name))
+                self.broadcast_message(self.cg.players.advanceTurn())
+            except (UnregisteredPlayerError, NotYourTurnError, NotEnoughTreasuryCoinsError) as e:
+                pass
+
+        '''
+        Collects income, which grants the player 1 coin from the treasury
+        '''
+        def income(self, player, parts):
+            try:
+                if player is None:
+                    raise UnregisteredPlayerError(self.request)
+
+                if not self.cg.players.isPlayersTurn(player):
+                    raise NotYourTurnError(self.request)
+
+                if self.cg.treasury < 1:
+                    raise NotEnoughTreasuryCoinsError(self.request)
+
+                player.coins += 1
+                self.cg.treasury -= 1
+                self.broadcast_message("{} collected INCOME.\n".format(player.name))
+                self.broadcast_message(self.cg.players.advanceTurn())
+            except (UnregisteredPlayerError, NotYourTurnError, NotEnoughTreasuryCoinsError) as e:
+                pass
+
+        '''
+        Collects foreign aid, which grants the player 2 coins from the treasury
+        '''
+        def foreign_aid(self, player, parts):
+            try:
+                if player is None:
+                    raise UnregisteredPlayerError(self.request)
+
+                if not self.cg.players.isPlayersTurn(player):
+                    raise NotYourTurnError(self.request)
+
+                if self.cg.treasury < 2:
+                    raise NotEnoughTreasuryCoinsError(self.request)
+
+                player.coins += 2
+                self.cg.treasury -= 2
+                self.broadcast_message("{} collected FOREIGN AID.\n".format(player.name))
+                self.broadcast_message(self.cg.players.advanceTurn())
+            except (UnregisteredPlayerError, NotYourTurnError, NotEnoughTreasuryCoinsError) as e:
+                pass
+
+        '''
+        Performs a coup on another player
+        '''
+        def coup(self, player, parts):
+            try:
+                if player is None:
+                    raise UnregisteredPlayerError(self.request)
+
+                if not self.cg.players.isPlayersTurn(player):
+                    raise NotYourTurnError(self.request)
+
+                if len(parts) < 2:
+                    raise InvalidCommandError(self.request, "You need to specify a player (by name) that you want to coup\n")
+
+                name = parts[1]
+                if name == player.name:
+                    raise InvalidCommandError(self.request, "You cannot coup yourself. Nice try.\n")
+
+                if player.coins < 7:
+                    raise NotEnoughCoinsError(self.request)
+
+                target = self.cg.players.getPlayerByName(name)
+                if target == None:
+                    raise NoSuchPlayerError(self.request, name)
+
+                player.coins -= 7
+                self.cg.treasury += 7
+                self.broadcast_message("{0} called a COUP on {1}.\n".format(player.name, target.name))
+                self.broadcast_message(target.killRandomCardInHand())
+                self.broadcast_message(self.cg.players.advanceTurn())
+            except (UnregisteredPlayerError, NotYourTurnError, InvalidCommandError, NoSuchPlayerError, NotEnoughCoinsError) as e:
+                pass
+
+
+        '''
+        Performs an assassination on another player
+        '''
+        def assasinate(self, player, parts):
+            try:
+                if player is None:
+                    raise UnregisteredPlayerError(self.request)
+
+                if not self.cg.players.isPlayersTurn(player):
+                    raise NotYourTurnError(self.request)
+
+                if len(parts) < 2:
+                    raise InvalidCommandError(self.request, "You need to specify a player (by name) that you want to assasinate\n")
+
+                name = parts[1]
+                if name == player.name:
+                    raise InvalidCommandError(self.request, "You cannot assasinate yourself. Nice try.\n")
+
+                if player.coins < 3:
+                    raise NotEnoughCoinsError(self.request)
+
+                target = self.cg.players.getPlayerByName(name)
+                if target == None:
+                    raise NoSuchPlayerError(self.request, name)
+
+                player.coins -= 3
+                self.cg.treasury += 3
+                self.broadcast_message("{0} assasinated one of {1}'s cards!.\n".format(player.name, target.name))
+                self.broadcast_message(target.killRandomCardInHand())
+                self.broadcast_message(self.cg.players.advanceTurn())
+            except (UnregisteredPlayerError, NotYourTurnError, InvalidCommandError, NoSuchPlayerError, NotEnoughCoinsError) as e:
+                pass
+
+        '''
+        Ends the player's turn, or raises a NotYourTurnError if it is not the player's turn to move
+        '''
+        def endturn(self, player, parts):
+            try:
+                if player is None:
+                    raise UnregisteredPlayerError(self.request)
+
+                if not self.cg.players.isPlayersTurn(player):
+                    raise NotYourTurnError(self.request)
+
+                self.broadcast_message("{} ended his turn.\n".format(player.name))
+                self.broadcast_message(self.cg.players.advanceTurn())
+            except (UnregisteredPlayerError, NotYourTurnError) as e:
+                pass
 
         '''
         A helper to verify that a requested name is valid before it is registered
@@ -105,28 +300,47 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                 strname = str(name)
                 length = len(strname)
                 if length <= 0 or length >= 20:
-                    self.request.sendall("Name must be between 1 and 20 characters in length.\n")
-                    return False
-                if self.cg.players.currentlyPlaying(self.request):
-                    self.request.sendall("A user with this name is already registered.\n")
-                    return False
+                    raise InvalidCommandError(self.request, "Name must be between 1 and 20 characters in length.\n")
+                if self.cg.players.getPlayerByName(name):
+                    raise InvalidCommandError(self.request, "A user with this name is already registered.\n")
                 return True
-            except ValueError:
-                self.request.sendall("Something went wrong registering your name.\n")
+            except (InvalidCommandError) as e:
                 return False
 
         '''
         Registers the client with the name provided
         '''
         def register(self, parts):
-                if len(parts) >= 2:
-                    name = parts[1]
-                    if self.isValidName(name):
-                        newPlayer = Player(self.request, name, self.cg.deck.deal(), self.cg.deck.deal())
-                        self.cg.players.addPlayer(newPlayer)
-                        self.welcome(name)
-                else:
-                    self.request.sendall("Could not register: Please provide a name.")
+            try:
+                if len(parts) < 2:
+                    raise InvalidCommandError(self.request, "Could not register: please provide a name.")
+
+                name = parts[1]
+                if self.cg.players.isClientRegistered(self.request):
+                    raise AlreadyRegisteredPlayerError(self.request)
+
+                if self.isValidName(name):
+                    newPlayer = Player(self.request, name, self.cg.deck.deal(), self.cg.deck.deal())
+                    self.cg.players.addPlayer(newPlayer)
+                    self.welcome(name)
+            except (InvalidCommandError, AlreadyRegisteredPlayerError) as e:
+                pass
+
+        '''Sets a player as ready or unready and announces to all clients'''
+        def ready(self, player, parts):
+            try:
+                if player is None:
+                    raise UnregisteredPlayerError(self.request)
+                self.broadcast_message(player.toggleReady())
+            except UnregisteredPlayerError:
+                pass
+
+        '''
+        Prints a help message for clients
+        '''
+        def help(self, player, parts):
+            message = "\nCOMMANDS:\n/say\n/exit\n/help\n/hand\n/tax\n/register\n/ready\n/endturn\n"
+            player.conn.sendall(message)
 
         '''
         Parses the client's request and dispatches to the correct function
@@ -147,11 +361,24 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                     self.showCoins(player, parts)
                 elif command == "/tax":
                     self.tax(player, parts)
+                elif command == "/income":
+                    self.income(player, parts)
+                elif command == "/aid":
+                    self.foreign_aid(player,parts)
+                elif command == "/coup":
+                    self.coup(player, parts)
+                elif command == "/assasinate":
+                    self.assasinate(player, parts)
                 elif command == "/register":
                     self.register(parts)
-                else:
+                elif command == "/ready":
+                    self.ready(player, parts)
+                elif command == "/endturn":
+                    self.endturn(player, parts)
+                elif command == "/players":
+                    self.listplayers(parts)
+                elif command != "":
                     self.request.sendall("Unrecognized command.\n")
-
 
 #A data structure containing a list of player objects
 #Used to keep track of players and turns
@@ -168,6 +395,13 @@ class PlayerQueue():
     def removePlayer(self, player):
             self.players.remove(player)
 
+    '''Returns true if the client has registered, false otherwise'''
+    def isClientRegistered(self, conn):
+        for player in self.players:
+            if conn == player.conn:
+                return True
+        return False
+
     '''Returns the player at the front of the turn queue. This player will move next'''
     def getCurrentPlayer(self):
         if self.numPlayers > 0:
@@ -175,10 +409,21 @@ class PlayerQueue():
         else:
             return None
 
+    '''Returns true if it is player's turn to move. False otherwise.'''
+    def isPlayersTurn(self, player):
+        return player == self.getCurrentPlayer()
+
     '''Returns the player with the matching connection identifier'''
     def getPlayer(self, conn):
         for player in self.players:
             if conn == player.conn:
+                return player
+        return None
+
+    '''Returns the player with the matching name'''
+    def getPlayerByName(self, name):
+        for player in self.players:
+            if name == player.name:
                 return player
         return None
 
@@ -188,19 +433,13 @@ class PlayerQueue():
 
     '''Cycle the turn so that the next player in line is now set to move'''
     def advanceTurn(self):
-        return self.players.rotate(1)
+        self.players.rotate(1)
+        return "It is now {}'s turn to move.\n".format(self.getCurrentPlayer().name)
+
 
     '''Gets the current number of players in the turn queue'''
     def numPlayers(self):
         return len(self.players)
-
-    '''Checks to see if a client connection is a registered player'''
-    def currentlyPlaying(self, conn):
-        for player in self.players:
-            if conn == player.conn:
-                return True
-        return False
-
 
 class CoupGame(object):
         def __init__(self):
@@ -226,16 +465,27 @@ class Player(object):
         def toggleReady(self):
             self.ready = not self.ready
             if self.ready:
-                return "{} is READY!".format(self.name)
+                return "{} is READY!\n".format(self.name)
             else:
-                return "{} is NOT READY".format(self.name)
+                return "{} is NOT READY!\n".format(self.name)
 
         '''Calls renderCard on each string and returns the result'''
-        def getHand(self):
-            hand = ""
+        def getHand(self, reveal):
+            hand = "\n{0}'s hand:\n".format(self.name)
             for card in self.cards:
-                hand += card.renderCard(True)
+                hand += card.renderCard(reveal)
             return hand
+
+        def killRandomCardInHand(self):
+            alivecards = []
+            for card in self.cards:
+                if card.alive:
+                    alivecards.append(card)
+            if alivecards == []:
+                return "{} has no living cards!\n".format(self.name)
+            choice = random.choice(alivecards)
+            choice.kill()
+            return "{0}'s {1} was just killed!\n".format(self.name, choice.type)
 
 class Card(object):
     def __init__(self, type):
@@ -246,12 +496,22 @@ class Card(object):
     def kill(self):
         self.alive = False
 
-    '''Displays a card in ascii art form'''
+    '''
+    Displays a card in ascii art form
+    Reveal is a boolean used to determine if the card should be shown or not
+    '''
     def renderCard(self, reveal):
-        if self.alive and not reveal:
-            return "_____\n|    |\n|    |\n|    |\n|____|\n"
+        status = ""
+        if self.alive:
+            status = "ALIVE"
         else:
-            return "_____\n|    |\n|{}|\n|    |\n|____|\n".format(self.type)
+            status = "DEAD"
+
+        if not self.alive or reveal:
+            return "______\n|     |\n|{0}.| ({1})\n|     |\n|_____|\n".format(self.type[:4], status)
+
+        else:
+            return "______\n|     | ({0})\n|     |\n|     |\n|_____|\n".format(status)
 
 class Deck(object):
         def __init__(self):
@@ -271,7 +531,7 @@ class Deck(object):
                 Card('Ambassador'),
                 Card('Ambassador'),
                 Card('Ambassador')]
-                self.numCards = len(cards)
+                self.numCards = len(self.cards)
 
         '''Shuffles all of the cards'''
         def shuffle(self):
@@ -305,7 +565,7 @@ def handler_factory(callback):
 
 if __name__ == "__main__":
     print "Welcome to COUP!\n"
-    HOST, PORT = "localhost", 7064
+    HOST, PORT = "localhost", 7086
 
     cg = CoupGame()
     server = CoupServer((HOST, PORT), handler_factory(cg) )
