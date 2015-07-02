@@ -4,6 +4,6 @@ All you need is Python installed to run this.
 Requires someone to moderate the game (as a non-player).
 Supports 2-6 players (no support for additional 2 player rules).
 
-To run: "python server.py"
+To run: "python server.py [port]" without brackets
 
 Anyone can join with telnet.
