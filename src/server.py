@@ -149,9 +149,9 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
             self.request.sendall(formatted_list)
 
         '''
-        Performs a Duke tax, which grants the player 3 coins from the treasury
+        Performs either a Duke tax, Foreign Aid, or Income.
         '''
-        def tax(self, player, parts):
+        def getCoins(self, player, parts, coins):
             try:
                 if player is None:
                     raise UnregisteredPlayerError(self.request)
@@ -159,60 +159,27 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                 if not self.cg.players.isPlayersTurn(player):
                     raise NotYourTurnError(self.request)
 
-                if self.cg.treasury < 3:
+                if self.cg.treasury < coins:
                     raise NotEnoughTreasuryCoinsError(self.request)
 
-                player.coins += 3
-                self.cg.treasury -= 3
-                self.broadcast_message("{} called a TAX, the Duke ability.\n".format(player.name))
+		#TODO: These two lines should only happen if no challenges.
+                player.coins += coins
+                self.cg.treasury -= coins
+                #TODO:Broadcast player's new coin count after turn.
+		if coins == 3:
+                	self.broadcast_message("{} called a TAX, the Duke ability.\n".format(player.name))
+			#TODO: Allow challenge.
+		elif coins == 2:
+                        self.broadcast_message("{} called FOREIGN AID.\n".format(player.name))
+                #TODO:Allow players to claim DUKE to block (and challenge).
+		else:
+                        self.broadcast_message("{} called INCOME.\n".format(player.name))
                 self.broadcast_message(self.cg.players.advanceTurn())
             except (UnregisteredPlayerError, NotYourTurnError, NotEnoughTreasuryCoinsError) as e:
                 pass
 
         '''
-        Collects income, which grants the player 1 coin from the treasury
-        '''
-        def income(self, player, parts):
-            try:
-                if player is None:
-                    raise UnregisteredPlayerError(self.request)
-
-                if not self.cg.players.isPlayersTurn(player):
-                    raise NotYourTurnError(self.request)
-
-                if self.cg.treasury < 1:
-                    raise NotEnoughTreasuryCoinsError(self.request)
-
-                player.coins += 1
-                self.cg.treasury -= 1
-                self.broadcast_message("{} collected INCOME.\n".format(player.name))
-                self.broadcast_message(self.cg.players.advanceTurn())
-            except (UnregisteredPlayerError, NotYourTurnError, NotEnoughTreasuryCoinsError) as e:
-                pass
-
-        '''
-        Collects foreign aid, which grants the player 2 coins from the treasury
-        '''
-        def foreign_aid(self, player, parts):
-            try:
-                if player is None:
-                    raise UnregisteredPlayerError(self.request)
-
-                if not self.cg.players.isPlayersTurn(player):
-                    raise NotYourTurnError(self.request)
-
-                if self.cg.treasury < 2:
-                    raise NotEnoughTreasuryCoinsError(self.request)
-
-                player.coins += 2
-                self.cg.treasury -= 2
-                self.broadcast_message("{} collected FOREIGN AID.\n".format(player.name))
-                self.broadcast_message(self.cg.players.advanceTurn())
-            except (UnregisteredPlayerError, NotYourTurnError, NotEnoughTreasuryCoinsError) as e:
-                pass
-
-        '''
-        Performs a coup on another player
+        Performs card destruction (coup, assassination, challenge)
         '''
         def destroy(self, player, parts, coins):
             try:
@@ -325,6 +292,9 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                 command = parts[0]
                 COUP = 7
 		ASSASSINATE = 3
+                TAX = 3
+                FOREIGN_AID = 2
+                INCOME = 1
 
                 if command == "/say":
                     self.chatMessage(player, parts)
@@ -337,11 +307,11 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
                 elif command == "/coins":
                     self.showCoins(player, parts)
                 elif command == "/tax":
-                    self.tax(player, parts)
+                    self.getCoins(player, parts, TAX)
                 elif command == "/income":
-                    self.income(player, parts)
+                    self.getCoins(player, parts, INCOME)
                 elif command == "/aid":
-                    self.foreign_aid(player,parts)
+                    self.getCoins(player, parts, FOREIGN_AID)
                 elif command == "/coup":
                     self.destroy(player, parts, COUP)
                 elif command == "/assasinate":
