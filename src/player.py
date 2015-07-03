@@ -41,6 +41,12 @@ class PlayerQueue():
     def __init__(self):
         #Initialize a queue structure that contains players
         self.players = deque([],maxlen=6)
+        self.ongoingVotes = {}
+
+    def getVote(self, name):
+        if name in self.ongoingVotes.keys():
+            return self.ongoingVotes[name]
+        return None
 
     '''Add a player to the turn queue'''
     def addPlayer(self, player):
