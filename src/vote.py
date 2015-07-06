@@ -9,7 +9,7 @@ failFunction - the function that runs if the vote fails
 eligiblePlayers - the players that are able to vote in this vote
 '''
 class Vote(object):
-    def __init__(self, playerQueue, name, timeout, passThreshhold):
+    def __init__(self, playerQueue, name, timeout, passThreshold):
         #Votes is a list of players that have voted in favor
         self.timeout = timeout
         self.name = name
@@ -18,7 +18,7 @@ class Vote(object):
 
         self.yesList = []
         self.noList = []
-        self.passThreshhold = passThreshhold
+        self.passThreshold = passThreshold
 
         self.voteThread = threading.Thread( target = self.startVote )
         self.voteThread.start()
@@ -33,7 +33,8 @@ class Vote(object):
         while timer <= self.timeout:
             time.sleep(1)
             timer += 1
-            print "{} seconds into vote...\n".format(timer)
+            if timer % 10 == 0:
+                 print "{} seconds left...\n".format(timer - self.timeout)
             if self.concluded:
                 return
         if not self.concluded:
@@ -53,9 +54,9 @@ class Vote(object):
         noPercent = 100 - yesPercent
         print "yes percent is {0}, eligible votes is {1}".format(yesPercent, eligibleVotes)
 
-        if yesPercent >= self.passThreshhold:
+        if yesPercent >= self.passThreshold:
             self.votePass()
-        elif noPercent >= (100 - self.passThreshhold):
+        elif noPercent >= (100 - self.passThreshold):
             self.voteFail()
 
     '''

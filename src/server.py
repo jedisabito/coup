@@ -126,7 +126,12 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
             if player.coins >= 10:
                 raise MustCoupError(self.request)
 
-		    #TODO: These two lines should only happen if no challenges.
+            #TODO: Challenge vote given Tax
+	    #voteQueue = list(cg.players)
+            #del voteQueue[player.name]
+            #passThreshold = 100 - (1 / cg.players.numPlayers()) * 100
+            #challenge = Vote(voteQueue, player.name, 20, passThreshold)
+
             player.coins += coins
             self.cg.treasury -= coins
             self.broadcast_message(self.cg.players.advanceTurn())
@@ -216,31 +221,6 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
 
             player.conn.sendall("Select cards to remove (1 to {}, where 1 is the top card)" \
                                 "from least to greatest without a space. Ex. /remove 23\n".format(str(len(player.cards))))
-
-            '''
-            #Same line twice, not sure if its worth consolidating
-            player.draw(cg.deck.deal())
-            player.draw(cg.deck.deal())
-
-            cg.players[name].lookAtHand()
-            #print cards[numCards - 1], cards[numCards - 2]
-
-            #This will enforce handsizes. This is the only time someone's
-            #hand should be bigger than 2
-
-            to_deck = raw_input("which card will you discard first? (0-3): ")
-            cg.deck.addCard(cg.players[name].cards[int(to_deck)])
-            cg.players[name].cards.remove(cg.players[name].cards[int(to_deck)])
-
-            cg.players[name].lookAtHand()
-
-            to_deck = raw_input("which card will you discard second? (0-2): ")
-            cg.deck.addCard(cg.players[name].cards[int(to_deck)])
-            cg.players[name].cards.remove(cg.players[name].cards[int(to_deck)])
-
-            self.broadcast_message(self.cg.players.advanceTurn())
-            cg.deck.shuffle()
-            '''
         except (AlreadyExchangingError, UnregisteredPlayerError, NotYourTurnError,
                 InvalidCommandError, NoSuchPlayerError, NotEnoughCoinsError, MustCoupError) as e:
                 pass
