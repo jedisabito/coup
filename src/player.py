@@ -23,6 +23,14 @@ class Player(object):
             hand += card.renderCard(reveal)
         return hand
 
+    def checkForCard(self, cardName):
+        i = 0
+        for card in self.cards:
+            if card == cardName:
+                return i
+            i = i + 1
+        return -1
+
     def killCardInHand(self):
         alivecards = []
         for card in self.cards:
@@ -91,7 +99,7 @@ class PlayerQueue():
         return None
 
     '''Returns the queue in list form for easy iteration'''
-    def list(self):
+    def listPlayers(self):
         return list(self.players)
 
     '''Cycle the turn so that the next player in line is now set to move'''
@@ -103,3 +111,4 @@ class PlayerQueue():
     '''Gets the current number of players in the turn queue'''
     def numPlayers(self):
         return len(self.players)
+        

@@ -1,5 +1,7 @@
 from error import *
 import threading, urllib, time
+from deck import Deck
+from player import Player, PlayerQueue
 
 '''
 timeout - number of seconds the vote lasts for
@@ -9,16 +11,22 @@ failFunction - the function that runs if the vote fails
 eligiblePlayers - the players that are able to vote in this vote
 '''
 class Vote(object):
-    def __init__(self, playerQueue, name, timeout, passThreshold):
+    def __init__(self, handler, playerQueue, name, timeout, passThreshold, successFunc, successArgs, failFunc, failArgs):
         #Votes is a list of players that have voted in favor
+        self.handler = handler
         self.timeout = timeout
         self.name = name
         self.playerQueue = playerQueue
-        self.playerList = self.playerQueue.list()
+        self.playerList = self.playerQueue.listPlayers()
 
         self.yesList = []
         self.noList = []
         self.passThreshold = passThreshold
+
+        self.successFunc = successFunc
+        self.successArgs = successArgs
+        self.failFunc = failFunc
+        self.failArgs = failArgs
 
         self.voteThread = threading.Thread( target = self.startVote )
         self.voteThread.start()
@@ -34,11 +42,13 @@ class Vote(object):
             time.sleep(1)
             timer += 1
             if timer % 10 == 0:
-                 print "{} seconds left...\n".format(timer - self.timeout)
+                 print "{} seconds left...\n".format(self.timeout - timer)
             if self.concluded:
+		self.votePass()
                 return
         if not self.concluded:
-            return self.voteFail()
+            self.voteFail()
+            return
 
     '''
     Checks to see if the vote has reached a conclusion
@@ -81,9 +91,11 @@ class Vote(object):
     def votePass(self):
         del self.playerQueue.ongoingVotes[self.name]
         self.concluded = True
+        self.successFunc(self.handler, self.noList, *self.successArgs)
         print "PASSED"
 
     def voteFail(self):
         del self.playerQueue.ongoingVotes[self.name]
         self.concluded = True
+        self.failFunc(self.handler, self.noList, *self.failArgs)
         print "FAILED"

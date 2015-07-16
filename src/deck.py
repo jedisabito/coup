@@ -66,3 +66,8 @@ class Deck(object):
         self.numCards += 1
         self.cards.append(card)
         print "Returning Card: numCards = ", self.numCards
+
+    def swapCard(self, player, card):
+        self.addCard(player.cards[card])
+        self.shuffle()
+        player.cards[card] = self.deal()

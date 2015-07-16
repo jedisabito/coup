@@ -3,6 +3,7 @@ import SocketServer
 from collections import deque
 import sys, threading, urllib
 from deck import Deck
+from vote import Vote
 from player import Player, PlayerQueue
 from error import *
 
@@ -49,7 +50,7 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
 
     '''Broadcasts message to all connected players'''
     def broadcast_message(self, message):
-        for player in self.cg.players.list():
+        for player in self.cg.players.listPlayers():
             player.conn.sendall(message)
 
     '''
@@ -126,15 +127,6 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
             if player.coins >= 10:
                 raise MustCoupError(self.request)
 
-            #TODO: Challenge vote given Tax
-	    #voteQueue = list(cg.players)
-            #del voteQueue[player.name]
-            #passThreshold = 100 - (1 / cg.players.numPlayers()) * 100
-            #challenge = Vote(voteQueue, player.name, 20, passThreshold)
-
-            player.coins += coins
-            self.cg.treasury -= coins
-            self.broadcast_message(self.cg.players.advanceTurn())
             return True
         except (AlreadyExchangingError, UnregisteredPlayerError, NotYourTurnError, NotEnoughTreasuryCoinsError, MustCoupError) as e:
             return False
@@ -144,11 +136,50 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
 	'''
     def tax(self, player, parts):
         if self.getCoins(player, parts, 3):
-            self.broadcast_message("{} called a TAX, the Duke ability.\n".format(player.name))
+             
+            self.broadcast_message("{} called TAX, the Duke ability, and will get 3 coins. Other players type \"/challenge\" or \"/pass\" to continue.\n".format(player.name))
+            
+            def failFunc(handler, passers, player):
+                player.coins += 3
+                handler.cg.treasury -= 3
+		handler.broadcast_message("No challengers, {} has gained 3 coins.\n".format(player.name))
+                handler.broadcast_message(handler.cg.players.advanceTurn())
 
+	    
+            def successFunc(handler, challengers, player):
+
+                card = player.checkForCard('Duke')
+                if card != -1:
+                    #player exchanges Duke with deck
+                    handler.cg.deck.swapCard(player, card) 
+
+                    #player gets 3 coins
+                    player.coins += 3
+                    handler.cg.treasury -= 3
+
+                    #challenger loses a card
+                    target = challengers[0]
+                    handler.destroy(player, target, 0)
+                    handler.broadcast_message("Challenge failed! {0} reveals a Duke from his hand, exchanges it with the deck, and still gains 3 coins. {1} loses a card.\n".format(player.name, target.name)) 
+                else:
+                    #player loses a card
+                    handler.broadcast_message("Challenge succeeded! {0} loses a card.\n".format(player.name))
+                    handler.broadcast_message(handler.cg.players.advanceTurn())
+
+            #TODO: Challenge vote given Tax
+            voteQueue = PlayerQueue()
+            for voter in self.cg.players.listPlayers():
+                if not (voter.name == player.name):
+                     voteQueue.addPlayer(player)
+            passThreshold = (1 - self.cg.players.numPlayers()) * 100
+            successArgs = [player]
+            failArgs = [player]
+            challenge = Vote(self, voteQueue, "challenge", 20, passThreshold, successFunc, successArgs, failFunc, failArgs)
+            
+ 
     def foreignAid(self, player, parts):
         if self.getCoins(player, parts, 2):
-            self.broadcast_message("{} called FOREIGN AID.\n".format(player.name))
+            self.broadcast_message("{} receieved FOREIGN AID.\n".format(player.name))
 
     def income(self, player, parts):
         if self.getCoins(player, parts, 1):
@@ -261,12 +292,12 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
     '''
     Performs card destruction (coup, assassination, challenge)
     '''
-    def destroy(self, player, parts, coins):
+    def destroy(self, player, target, coins):
         try:
             if player is None:
                 raise UnregisteredPlayerError(self.request)
 
-            if not self.cg.players.isPlayersTurn(player):
+            if not self.cg.players.isPlayersTurn(player) and coins != 0:
                 raise NotYourTurnError(self.request)
 
             if player.coins >= 10 and coins == 3:
@@ -301,7 +332,8 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
     Assassination (using destroy as helper function), card destruction with loss of 3 coins
     '''
     def assassinate(self, player, parts):
-        target = self.destroy(player, parts, 3)
+        target = self.cg.players.getPlayerByName(parts[1])
+        target = self.destroy(player, target, 3)
         if target is not None:
             self.broadcast_message("{0} will ASSASSINATE {1}.\n".format(player.name, target.name))
 
@@ -309,6 +341,7 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
     Coup (using destroy as helper function), card destruction with loss of 7 coins
         '''
     def coup(self,player,parts):
+        target = self.cg.players.getPlayerByName(parts[1])
         target = self.destroy(player, parts, 7)
         if target is not None:
             self.broadcast_message("{0} called a COUP on {1}.\n".format(player.name, target.name))
@@ -420,6 +453,13 @@ class CoupRequestHandler(SocketServer.BaseRequestHandler):
             self.endturn(player, parts)
         elif command == "/players":
             self.listplayers(parts)
+        elif command == "/challenge":
+            currentVote = self.players.getVote("challenge")
+            currentVote.vote(player, True)
+                 
+        elif command == "/pass":
+            currentVote = self.players.getVote("challenge")
+            currentVote.vote(player, False)
         elif command != "":
             self.request.sendall("Unrecognized command.\n")
 
